@@ -26,13 +26,12 @@ class DeconzDevice(Entity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Disconnect device object when removed."""
-        if self.unsub_dispatcher is not None:
-            self.unsub_dispatcher()
         self._device.remove_callback(self.async_update_callback)
-        self._device = None
+        del self.gateway.deconz_ids[self.entity_id]
+        self.unsub_dispatcher()
 
     @callback
-    def async_update_callback(self, reason):
+    def async_update_callback(self, force_update=False):
         """Update the device's state."""
         self.async_schedule_update_ha_state()
 
@@ -62,8 +61,10 @@ class DeconzDevice(Entity):
         if (self._device.uniqueid is None or
                 self._device.uniqueid.count(':') != 7):
             return None
+
         serial = self._device.uniqueid.split('-', 1)[0]
         bridgeid = self.gateway.api.config.bridgeid
+
         return {
             'connections': {(CONNECTION_ZIGBEE, serial)},
             'identifiers': {(DECONZ_DOMAIN, serial)},
